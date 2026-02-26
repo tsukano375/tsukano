@@ -64,42 +64,51 @@ git push -u origin <branch-name>
 
 ---
 
-## Project Structure (To Be Filled In)
-
-As the project evolves, update this section with the actual directory layout:
+## Project Structure
 
 ```
 tsukano/
 ├── CLAUDE.md          # This file
-├── README.md          # Project overview (to be created)
-├── src/               # Source code (to be created)
-├── tests/             # Test files (to be created)
+├── index.html         # コーチング学習ツール（メインファイル）
 └── .git/              # Git metadata
 ```
 
 ---
 
-## Development Workflow (To Be Established)
+## このプロジェクトについて
 
-Once the project is initialized, document the following here:
+**コーチング学習ツール** — ブラウザで開くだけで動く、シングルHTMLファイルのWebアプリ。
 
-| Step | Command | Description |
-|------|---------|-------------|
-| Install dependencies | TBD | — |
-| Run tests | TBD | — |
-| Build project | TBD | — |
-| Lint code | TBD | — |
+### 学習コンテンツ
+
+| モード | 内容 |
+|--------|------|
+| フレームワーク辞典 | GROW・傾聴・承認・SMARTゴール等 7項目 |
+| クイズ | コーチング理論・手法 全10問 |
+| ケーススタディ | 実践シナリオ 3場面（選択式） |
+| ロールプレイ | 会話練習シナリオ 2本（スコア付き） |
+
+### 使い方
+- `index.html` をブラウザで開くだけ。インストール不要。
+- 進捗・バッジは `localStorage` に自動保存される。
+- APIキー不要（ロールプレイはスクリプト式）。
 
 ---
 
-## Key Conventions (To Be Established)
+## Development Workflow
 
-Document these as the project grows:
+| Step | Command | Description |
+|------|---------|-------------|
+| 起動 | `index.html` をダブルクリック | ブラウザで開く。サーバー不要 |
+| 編集 | `index.html` を直接編集 | CSS・JS・データすべて1ファイル |
 
-- **Language / Framework**: TBD
-- **Code style / Formatter**: TBD
-- **Test framework**: TBD
-- **Environment variables**: TBD
+---
+
+## Key Conventions
+
+- **Language / Framework**: Vanilla HTML / CSS / JavaScript（ライブラリなし）
+- **データ保存**: `localStorage`（サーバー不要）
+- **コンテンツ追加方法**: `quizData` / `caseData` / `rpScenarios` / `dictData` 配列に追記する
 
 ---
 
@@ -115,4 +124,4 @@ Document these as the project grows:
 
 ---
 
-*Last updated: 2026-02-25 — Initial creation (empty repository)*
+*Last updated: 2026-02-26 — コーチング学習ツール (index.html) を初期作成*

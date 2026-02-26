@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>コーチング学習ツール</title>
+  <style>
+    :root {
+      --green: #2a9d8f;
+      --green-dark: #1f7a6e;
+      --green-light: #e8f5f3;
+      --accent: #e9c46a;
+      --danger: #e76f51;
+      --text: #264653;
+      --gray: #6c757d;
+      --light: #f8f9fa;
+      --white: #ffffff;
+      --shadow: 0 4px 16px rgba(42,157,143,0.12);
+      --radius: 14px;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Helvetica Neue', 'Hiragino Sans', sans-serif; background: var(--light); color: var(--text); min-height: 100vh; }
+
+    /* ── ナビ ── */
+    .navbar { background: var(--green); color: white; padding: 14px 20px; display: flex; align-items: center; gap: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.15); }
+    .navbar h1 { font-size: 1.1rem; font-weight: 700; flex: 1; }
+    .back-btn { background: rgba(255,255,255,0.2); border: none; color: white; padding: 6px 14px; border-radius: 20px; cursor: pointer; font-size: 0.9rem; }
+    .back-btn:hover { background: rgba(255,255,255,0.35); }
+
+    /* ── スクリーン管理 ── */
+    .screen { display: none; }
+    .screen.active { display: block; }
+
+    /* ── ホーム ── */
+    #home .hero { background: linear-gradient(135deg, var(--green) 0%, var(--green-dark) 100%); color: white; text-align: center; padding: 48px 20px 40px; }
+    #home .hero h2 { font-size: 1.8rem; margin-bottom: 8px; }
+    #home .hero p { opacity: 0.9; font-size: 1rem; }
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; padding: 24px 20px; max-width: 720px; margin: 0 auto; }
+    .mode-card { background: white; border-radius: var(--radius); padding: 28px 16px; text-align: center; cursor: pointer; box-shadow: var(--shadow); transition: transform 0.18s, box-shadow 0.18s; border: 2px solid transparent; }
+    .mode-card:hover { transform: translateY(-4px); box-shadow: 0 8px 24px rgba(42,157,143,0.2); border-color: var(--green); }
+    .mode-card .icon { font-size: 2.4rem; margin-bottom: 10px; }
+    .mode-card h3 { font-size: 1rem; color: var(--text); font-weight: 700; }
+    .mode-card p { font-size: 0.78rem; color: var(--gray); margin-top: 6px; line-height: 1.5; }
+    .progress-bar-wrap { padding: 0 20px 24px; max-width: 720px; margin: 0 auto; }
+    .progress-label { font-size: 0.85rem; color: var(--gray); margin-bottom: 6px; }
+    .progress-bar { background: #ddd; border-radius: 8px; height: 10px; overflow: hidden; }
+    .progress-fill { background: var(--green); height: 100%; border-radius: 8px; transition: width 0.4s; }
+
+    /* ── 汎用コンテナ ── */
+    .container { max-width: 720px; margin: 0 auto; padding: 20px; }
+
+    /* ── 辞典 ── */
+    .dict-item { background: white; border-radius: var(--radius); padding: 20px; margin-bottom: 14px; box-shadow: var(--shadow); cursor: pointer; }
+    .dict-item h3 { color: var(--green); font-size: 1.05rem; display: flex; justify-content: space-between; align-items: center; }
+    .dict-item h3 span.tag { font-size: 0.72rem; background: var(--green-light); color: var(--green-dark); padding: 2px 8px; border-radius: 10px; font-weight: normal; }
+    .dict-body { display: none; margin-top: 12px; font-size: 0.92rem; line-height: 1.75; color: #444; }
+    .dict-body.open { display: block; }
+    .dict-body .step { background: var(--green-light); border-left: 4px solid var(--green); padding: 8px 12px; margin: 6px 0; border-radius: 0 8px 8px 0; }
+    .dict-body .step strong { color: var(--green-dark); }
+    .dict-body .example { background: #fff8ec; border-left: 4px solid var(--accent); padding: 8px 12px; margin: 8px 0; border-radius: 0 8px 8px 0; font-size: 0.88rem; }
+
+    /* ── クイズ ── */
+    .quiz-header { text-align: center; margin-bottom: 20px; }
+    .quiz-header .q-count { font-size: 0.85rem; color: var(--gray); }
+    .quiz-header .q-num { font-size: 1.4rem; font-weight: 700; color: var(--green); }
+    .quiz-card { background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .quiz-card .question { font-size: 1.05rem; font-weight: 600; margin-bottom: 20px; line-height: 1.65; }
+    .choice-btn { display: block; width: 100%; text-align: left; background: var(--light); border: 2px solid #e0e0e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; cursor: pointer; font-size: 0.95rem; transition: all 0.15s; }
+    .choice-btn:hover { border-color: var(--green); background: var(--green-light); }
+    .choice-btn.correct { border-color: var(--green); background: #d4edda; }
+    .choice-btn.wrong { border-color: var(--danger); background: #fde8e4; }
+    .quiz-feedback { margin-top: 14px; padding: 14px; border-radius: 10px; font-size: 0.92rem; line-height: 1.6; display: none; }
+    .quiz-feedback.correct { background: #d4edda; color: #155724; display: block; }
+    .quiz-feedback.wrong { background: #fde8e4; color: #7b2d21; display: block; }
+    .next-btn { margin-top: 14px; background: var(--green); color: white; border: none; padding: 12px 28px; border-radius: 30px; cursor: pointer; font-size: 0.95rem; display: none; }
+    .next-btn.visible { display: inline-block; }
+    .quiz-result { text-align: center; padding: 40px 20px; }
+    .quiz-result .score { font-size: 3rem; font-weight: 700; color: var(--green); }
+    .quiz-result p { color: var(--gray); margin-top: 8px; }
+    .restart-btn { margin-top: 20px; background: var(--green); color: white; border: none; padding: 12px 32px; border-radius: 30px; cursor: pointer; font-size: 1rem; }
+
+    /* ── ケーススタディ ── */
+    .case-card { background: white; border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); }
+    .case-nav { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    .case-nav button { background: var(--light); border: 2px solid #e0e0e0; border-radius: 20px; padding: 6px 14px; cursor: pointer; font-size: 0.85rem; }
+    .case-nav button.active { background: var(--green); border-color: var(--green); color: white; }
+    .case-scene { background: #f0f8f7; border-radius: 10px; padding: 16px; margin-bottom: 20px; font-size: 0.93rem; line-height: 1.75; border-left: 4px solid var(--green); }
+    .case-scene strong { color: var(--green-dark); }
+    .case-question { font-weight: 600; margin-bottom: 14px; }
+    .case-choice { display: block; width: 100%; text-align: left; background: var(--light); border: 2px solid #e0e0e0; border-radius: 10px; padding: 12px 16px; margin-bottom: 10px; cursor: pointer; font-size: 0.93rem; transition: all 0.15s; }
+    .case-choice:hover { border-color: var(--green); background: var(--green-light); }
+    .case-choice.best { border-color: var(--green); background: #d4edda; }
+    .case-choice.bad { border-color: var(--danger); background: #fde8e4; }
+    .case-choice.ok { border-color: var(--accent); background: #fff8ec; }
+    .case-feedback { margin-top: 14px; padding: 14px; background: var(--green-light); border-radius: 10px; font-size: 0.92rem; line-height: 1.7; display: none; }
+    .case-feedback.open { display: block; }
+    .case-next-btn { margin-top: 14px; background: var(--green); color: white; border: none; padding: 11px 26px; border-radius: 30px; cursor: pointer; font-size: 0.93rem; display: none; }
+    .case-next-btn.visible { display: inline-block; }
+
+    /* ── ロールプレイ ── */
+    .rp-intro { background: white; border-radius: var(--radius); padding: 22px; box-shadow: var(--shadow); margin-bottom: 16px; }
+    .rp-intro h3 { color: var(--green); margin-bottom: 8px; }
+    .rp-intro p { font-size: 0.92rem; line-height: 1.7; color: #444; }
+    .scenario-list { display: flex; flex-direction: column; gap: 12px; }
+    .scenario-btn { background: white; border: 2px solid #e0e0e0; border-radius: var(--radius); padding: 16px 20px; cursor: pointer; text-align: left; transition: all 0.15s; }
+    .scenario-btn:hover { border-color: var(--green); background: var(--green-light); }
+    .scenario-btn h4 { color: var(--text); font-size: 0.98rem; }
+    .scenario-btn p { font-size: 0.82rem; color: var(--gray); margin-top: 4px; }
+    .rp-chat { background: white; border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden; }
+    .rp-chat-header { background: var(--green); color: white; padding: 14px 18px; font-size: 0.95rem; font-weight: 600; }
+    .rp-messages { padding: 16px; min-height: 280px; max-height: 380px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .msg { max-width: 82%; padding: 10px 14px; border-radius: 14px; font-size: 0.92rem; line-height: 1.6; }
+    .msg.ai { background: var(--green-light); color: var(--text); align-self: flex-start; border-bottom-left-radius: 4px; }
+    .msg.user { background: var(--green); color: white; align-self: flex-end; border-bottom-right-radius: 4px; }
+    .msg.system { background: #fff3cd; color: #856404; align-self: center; text-align: center; font-size: 0.82rem; border-radius: 8px; max-width: 95%; }
+    .rp-choices { padding: 12px 16px 16px; border-top: 1px solid #eee; }
+    .rp-choices p { font-size: 0.82rem; color: var(--gray); margin-bottom: 8px; }
+    .rp-choice-btn { display: block; width: 100%; text-align: left; background: var(--light); border: 2px solid #e0e0e0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; cursor: pointer; font-size: 0.9rem; transition: all 0.15s; }
+    .rp-choice-btn:hover { border-color: var(--green); background: var(--green-light); }
+    .rp-choice-btn.selected-good { border-color: var(--green); background: #d4edda; }
+    .rp-choice-btn.selected-bad { border-color: var(--danger); background: #fde8e4; }
+    .rp-result { padding: 20px; text-align: center; }
+    .rp-result .rp-score { font-size: 2.5rem; font-weight: 700; color: var(--green); }
+    .rp-result p { color: var(--gray); margin: 8px 0; font-size: 0.93rem; }
+    .rp-result .advice { background: var(--green-light); border-radius: 10px; padding: 14px; text-align: left; margin-top: 12px; font-size: 0.9rem; line-height: 1.7; }
+
+    /* ── Badge ── */
+    .badge-wrap { padding: 0 20px 16px; max-width: 720px; margin: 0 auto; }
+    .badge-wrap h3 { font-size: 0.9rem; color: var(--gray); margin-bottom: 10px; }
+    .badges { display: flex; gap: 10px; flex-wrap: wrap; }
+    .badge { background: white; border-radius: 12px; padding: 8px 14px; font-size: 0.82rem; box-shadow: var(--shadow); display: flex; align-items: center; gap: 6px; color: var(--gray); }
+    .badge.earned { color: var(--green-dark); border: 2px solid var(--green); }
+
+    @media (max-width: 480px) {
+      #home .hero h2 { font-size: 1.4rem; }
+      .card-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ホーム -->
+<div id="home" class="screen active">
+  <div class="navbar"><h1>🌱 コーチング学習ツール</h1></div>
+  <div id="home-hero" class="hero">
+    <h2>コーチング学習ツール</h2>
+    <p>4つのモードで、コーチング技術を実践的に学ぼう</p>
+  </div>
+  <div class="card-grid">
+    <div class="mode-card" onclick="showScreen('roleplay')">
+      <div class="icon">🎭</div>
+      <h3>ロールプレイ</h3>
+      <p>AIと会話練習。コーチングの問いかけを体験する</p>
+    </div>
+    <div class="mode-card" onclick="showScreen('quiz')">
+      <div class="icon">📝</div>
+      <h3>クイズ</h3>
+      <p>理論・手法を問題形式で確認する</p>
+    </div>
+    <div class="mode-card" onclick="showScreen('casestudy')">
+      <div class="icon">💼</div>
+      <h3>ケーススタディ</h3>
+      <p>実際の場面でどう対応するか考える</p>
+    </div>
+    <div class="mode-card" onclick="showScreen('dictionary')">
+      <div class="icon">📚</div>
+      <h3>フレームワーク辞典</h3>
+      <p>GROW・傾聴・承認など手法をいつでも参照</p>
+    </div>
+  </div>
+  <div class="progress-bar-wrap">
+    <div class="progress-label">学習進捗</div>
+    <div class="progress-bar"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+    <div style="font-size:0.8rem;color:var(--gray);margin-top:4px;" id="progress-text">クイズ 0/10 完了</div>
+  </div>
+  <div class="badge-wrap">
+    <h3>獲得バッジ</h3>
+    <div class="badges">
+      <div class="badge" id="badge-quiz">🎓 クイズマスター</div>
+      <div class="badge" id="badge-case">💼 ケースマスター</div>
+      <div class="badge" id="badge-rp">🎭 ロールプレイヤー</div>
+    </div>
+  </div>
+</div>
+
+<!-- フレームワーク辞典 -->
+<div id="dictionary" class="screen">
+  <div class="navbar">
+    <button class="back-btn" onclick="showScreen('home')">← ホーム</button>
+    <h1>📚 フレームワーク辞典</h1>
+  </div>
+  <div class="container" id="dict-container"></div>
+</div>
+
+<!-- クイズ -->
+<div id="quiz" class="screen">
+  <div class="navbar">
+    <button class="back-btn" onclick="showScreen('home')">← ホーム</button>
+    <h1>📝 クイズ</h1>
+  </div>
+  <div class="container">
+    <div id="quiz-body"></div>
+  </div>
+</div>
+
+<!-- ケーススタディ -->
+<div id="casestudy" class="screen">
+  <div class="navbar">
+    <button class="back-btn" onclick="showScreen('home')">← ホーム</button>
+    <h1>💼 ケーススタディ</h1>
+  </div>
+  <div class="container">
+    <div id="case-body"></div>
+  </div>
+</div>
+
+<!-- ロールプレイ -->
+<div id="roleplay" class="screen">
+  <div class="navbar">
+    <button class="back-btn" onclick="showScreen('home')">← ホーム</button>
+    <h1>🎭 ロールプレイ</h1>
+  </div>
+  <div class="container">
+    <div id="rp-body"></div>
+  </div>
+</div>
+
+<script>
+// =============================================
+// データ定義
+// =============================================
+
+// --- フレームワーク辞典データ ---
+const dictData = [
+  {
+    title: "GROWモデル",
+    tag: "コーチングの基本",
+    body: `
+      <p>コーチングで最も使われる4段階のフレームワーク。会話の構造を作るのに役立ちます。</p>
+      <div class="step"><strong>G — Goal（目標）</strong>「何を達成したいですか？」「理想の状態はどんなイメージですか？」</div>
+      <div class="step"><strong>R — Reality（現状）</strong>「今の状況を教えてください」「現在どの程度できていますか？」</div>
+      <div class="step"><strong>O — Options（選択肢）</strong>「どんな方法が考えられますか？」「他にはどんなアプローチがあると思いますか？」</div>
+      <div class="step"><strong>W — Will（意志）</strong>「何から始めますか？」「いつやりますか？誰かのサポートが必要ですか？」</div>
+      <div class="example">💡 <strong>ポイント：</strong>コーチはアドバイスより質問を中心に。相手自身が答えを見つけることが大切です。</div>
+    `
+  },
+  {
+    title: "アクティブリスニング（積極的傾聴）",
+    tag: "傾聴スキル",
+    body: `
+      <p>相手の話をただ聞くのではなく、<strong>理解しようとする意図を持って聴く</strong>技術です。</p>
+      <div class="step"><strong>オウム返し（バックトラッキング）</strong>相手の言葉をそのまま繰り返す。「売上が伸びない…と感じているんですね」</div>
+      <div class="step"><strong>ペーシング</strong>相手の話すスピード・トーンに合わせる</div>
+      <div class="step"><strong>要約・言い換え</strong>「つまり〇〇ということですね？」と確認する</div>
+      <div class="step"><strong>感情の反映</strong>「それはつらかったですね」と気持ちに寄り添う</div>
+      <div class="example">💡 <strong>NGな聴き方：</strong>話を途中で遮る / スマホを見ながら聴く / アドバイスを急ぐ</div>
+    `
+  },
+  {
+    title: "承認（アクノレッジメント）",
+    tag: "関係構築",
+    body: `
+      <p>相手の存在・行動・成長を<strong>言葉にして認める</strong>スキルです。モチベーション向上に直結します。</p>
+      <div class="step"><strong>存在承認</strong>その人がいること自体を認める「あなたがいてくれて助かっています」</div>
+      <div class="step"><strong>行動承認</strong>具体的な行動を認める「先週のプレゼン、資料が分かりやすかったですよ」</div>
+      <div class="step"><strong>成長承認</strong>変化・成長を認める「先月より落ち着いて話せるようになりましたね」</div>
+      <div class="example">💡 <strong>コツ：</strong>「すごいね」より<strong>具体的に</strong>。「先週の〇〇の場面で〜したのが良かった」と言うと伝わりやすいです。</div>
+    `
+  },
+  {
+    title: "強力な質問（パワフルクエスチョン）",
+    tag: "質問スキル",
+    body: `
+      <p>相手の思考を深め、新しい視点・気づきを生む質問です。</p>
+      <div class="step"><strong>オープン質問</strong>「はい/いいえ」で答えられない質問。「どんな状態が理想ですか？」「何が一番重要だと思いますか？」</div>
+      <div class="step"><strong>未来志向の質問</strong>「もし制限がなければ何をしますか？」「1年後、どうなっていたいですか？」</div>
+      <div class="step"><strong>前提を揺さぶる質問</strong>「本当にそれしか方法はないですか？」「逆の立場から見るとどうですか？」</div>
+      <div class="step"><strong>スケーリング質問</strong>「10点満点で今は何点ですか？1点上げるには何が必要ですか？」</div>
+      <div class="example">💡 <strong>NG：</strong>誘導質問（「〇〇すべきじゃないですか？」）はコーチングではなくティーチングです。</div>
+    `
+  },
+  {
+    title: "SMARTゴール",
+    tag: "目標設定",
+    body: `
+      <p>曖昧な目標を具体的・達成可能な形にする5つの基準です。</p>
+      <div class="step"><strong>S — Specific（具体的）</strong>「英語を勉強する」→「TOEICで700点を取る」</div>
+      <div class="step"><strong>M — Measurable（測定可能）</strong>進捗が数字やデータで確認できる</div>
+      <div class="step"><strong>A — Achievable（達成可能）</strong>現実的な範囲内で少し背伸びする目標</div>
+      <div class="step"><strong>R — Relevant（関連性）</strong>自分の価値観・大きな目標と紐づいている</div>
+      <div class="step"><strong>T — Time-bound（期限）</strong>「3ヶ月以内に」など具体的な期限を設ける</div>
+      <div class="example">💡 <strong>使い方：</strong>1on1でメンバーが目標を言ったとき「それはいつまでに？どうなれば達成ですか？」と質問してSMART化を助けましょう。</div>
+    `
+  },
+  {
+    title: "コーチングとティーチングの違い",
+    tag: "基礎知識",
+    body: `
+      <p>コーチングとティーチングは目的が異なります。状況に応じて使い分けることが大切です。</p>
+      <div class="step"><strong>ティーチング（指導・教える）</strong>正解を教える。経験の少ない新人や、緊急時に有効。「こうしなさい」「これが正解です」</div>
+      <div class="step"><strong>コーチング（引き出す）</strong>相手の中にある答えを引き出す。経験者・自律したメンバーに有効。「どう思いますか？」「どうすればいいと思う？」</div>
+      <div class="step"><strong>メンタリング（経験を共有する）</strong>自分の経験談を伝えながらサポートする</div>
+      <div class="example">💡 <strong>目安：</strong>スキルが低い・状況が緊急 → ティーチング<br>スキルがある・自律したい → コーチング</div>
+    `
+  },
+  {
+    title: "心理的安全性",
+    tag: "チームマネジメント",
+    body: `
+      <p>Googleのプロジェクト・アリストテレスで発見された、<strong>チームのパフォーマンスを最も左右する要素</strong>。</p>
+      <div class="step"><strong>定義</strong>「このチームでは、リスクのある発言をしても罰せられない」という信頼感</div>
+      <div class="step"><strong>具体的な行動 ①</strong>メンバーの発言を遮らない・否定から入らない</div>
+      <div class="step"><strong>具体的な行動 ②</strong>リーダー自身が弱みや失敗を開示する</div>
+      <div class="step"><strong>具体的な行動 ③</strong>「いい質問だね」「教えてくれてありがとう」と言語化して感謝する</div>
+      <div class="example">💡 「また怒られる…」「こんなこと聞いたら笑われる」と感じるチームは心理的安全性が低い状態です。</div>
+    `
+  }
+];
+
+// --- クイズデータ ---
+const quizData = [
+  {
+    q: "GROWモデルの「G」は何の略ですか？",
+    choices: ["Grade（評価）", "Goal（目標）", "Growth（成長）", "Guide（案内）"],
+    correct: 1,
+    feedback: "正解！GはGoal（目標）です。コーチングはまず「何を達成したいか」を明確にすることから始まります。"
+  },
+  {
+    q: "コーチングで最も大切なスキルの1つとされているものはどれですか？",
+    choices: ["アドバイスする力", "積極的傾聴（アクティブリスニング）", "評価する力", "知識量"],
+    correct: 1,
+    feedback: "正解！傾聴はコーチングの根幹です。相手の言葉・感情・背景を丁寧に聞くことで信頼関係が生まれます。"
+  },
+  {
+    q: "次のうち「オープン質問」はどれですか？",
+    choices: ["「それは難しかったですか？」", "「計画は立てましたか？」", "「どんな方法が考えられますか？」", "「もう一度やりますか？」"],
+    correct: 2,
+    feedback: "正解！オープン質問とは「はい/いいえ」で答えられない質問です。「どんな」「どうすれば」「なぜ」などから始まります。"
+  },
+  {
+    q: "承認（アクノレッジメント）の説明として正しいのはどれですか？",
+    choices: ["相手の成果をほめること", "相手の存在・行動・成長を言葉にして認めること", "指示通りできたことを確認すること", "評価面談で点数をつけること"],
+    correct: 1,
+    feedback: "正解！承認は「ほめる」より広い概念です。存在・行動・成長など多角的に認めることで、相手の自己効力感が高まります。"
+  },
+  {
+    q: "SMARTゴールの「M」が表すものはどれですか？",
+    choices: ["Meaningful（意味がある）", "Motivating（動機付けになる）", "Measurable（測定可能な）", "Manageable（管理しやすい）"],
+    correct: 2,
+    feedback: "正解！Mは Measurable（測定可能）です。「いつ達成できたか分かる」状態にすることが目標設定の重要なポイントです。"
+  },
+  {
+    q: "コーチングとティーチングの違いについて正しいのはどれですか？",
+    choices: [
+      "コーチングは正解を教えるもの",
+      "ティーチングは相手の中から答えを引き出すもの",
+      "コーチングは相手の中にある答えを引き出すもの",
+      "どちらも同じ意味"
+    ],
+    correct: 2,
+    feedback: "正解！コーチングは「答えは相手の中にある」という前提に立ちます。ティーチングは知識・スキルを教えること。状況に応じて使い分けましょう。"
+  },
+  {
+    q: "心理的安全性とは何ですか？",
+    choices: [
+      "チームのセキュリティを守ること",
+      "リスクのある発言をしても罰せられないという信頼感",
+      "メンバー全員が仲良しであること",
+      "失敗が許されない緊張感のある環境"
+    ],
+    correct: 1,
+    feedback: "正解！心理的安全性はGoogleの研究で注目されました。「発言して大丈夫」という安心感がチームの創造性・パフォーマンスを高めます。"
+  },
+  {
+    q: "GROWモデルの「O」のフェーズで適切な問いかけはどれですか？",
+    choices: [
+      "「今の状況を教えてください」",
+      "「何を達成したいですか？」",
+      "「他にどんな方法が考えられますか？」",
+      "「いつ始めますか？」"
+    ],
+    correct: 2,
+    feedback: "正解！O（Options/選択肢）では、「他に方法はないか？」「制限がなければどうするか？」など、アイデアを広げる問いをします。"
+  },
+  {
+    q: "スケーリング質問の例として正しいのはどれですか？",
+    choices: [
+      "「なぜできなかったと思いますか？」",
+      "「10点満点で今は何点？1点上げるには何が必要？」",
+      "「もっと頑張れますか？」",
+      "「先週と今週を比較してどうですか？」"
+    ],
+    correct: 1,
+    feedback: "正解！スケーリング質問は現状を数値化し、次の一歩を具体的に考えるのに役立ちます。「あと1点上げるには？」という問いが行動を生みます。"
+  },
+  {
+    q: "コーチングで「ペーシング」とは何ですか？",
+    choices: [
+      "会話のテンポを速くすること",
+      "相手の話すスピードや感情のトーンに合わせること",
+      "ゴールに向かって急かすこと",
+      "メモを取ること"
+    ],
+    correct: 1,
+    feedback: "正解！ペーシングとは相手に「合わせる」ことです。話すスピード・声のトーン・感情の温度に合わせることで、相手は「分かってもらえた」と感じます。"
+  }
+];
+
+// --- ケーススタディデータ ---
+const caseData = [
+  {
+    title: "場面①：ミスを繰り返す部下",
+    scene: `<strong>状況：</strong>Aさん（入社3年目）は、ここ2ヶ月で同じようなミスを3回繰り返しています。先週も取引先への連絡漏れが発覚し、あなたはAさんと1on1をすることにしました。`,
+    question: "あなたはAさんに、まず何と声をかけますか？",
+    choices: [
+      { text: "「また同じミスをしたね。なぜ直らないの？」", type: "bad" },
+      { text: "「先週の件、どんな状況だったか聞かせてもらえますか？」", type: "best" },
+      { text: "「気をつけてって言ったよね？ちゃんとメモしてる？」", type: "bad" },
+      { text: "「大丈夫？最近調子が悪そうだね」", type: "ok" }
+    ],
+    feedback: `
+      <strong>✅ ベスト：「どんな状況だったか聞かせてもらえますか？」</strong><br>
+      まず事実を確認することが大切です。「なぜ直らない？」などの詰問はAさんを防御的にし、本当の原因が分かりません。<br><br>
+      状況を聞くことで「確認の手順がわからなかった」「タスクが多すぎた」など、本質的な原因が見えてきます。<br><br>
+      <strong>🟡 「大丈夫？」は悪くないですが</strong>、感情への共感だけではなく、具体的に何が起きていたかを確認するステップも必要です。
+    `
+  },
+  {
+    title: "場面②：やる気をなくした部下",
+    scene: `<strong>状況：</strong>Bさん（入社5年目・中堅）は、以前は積極的に提案を出していたのに、最近は会議でも発言が減り、「どうせ変わらない」という発言が増えています。`,
+    question: "コーチングとして最も効果的なアプローチはどれですか？",
+    choices: [
+      { text: "「最近元気なさそうだけど、何か困っていることある？」と1on1で聞く", type: "best" },
+      { text: "「最近やる気が感じられない。もっとモチベーションを持って」と伝える", type: "bad" },
+      { text: "重要なプロジェクトに任命して、責任感を与える", type: "ok" },
+      { text: "しばらく様子を見る", type: "bad" }
+    ],
+    feedback: `
+      <strong>✅ ベスト：1on1で状況を聞く</strong><br>
+      「やる気がない」という見え方の裏には、様々な原因があります。1on1で本人の言葉を引き出すことが最初のステップです。<br><br>
+      <strong>❌ 「モチベーションを持って」は逆効果</strong><br>
+      やる気をなくしている人に「やる気を出せ」と言っても、問題は解決しません。むしろ「分かってもらえない」と感じさせてしまいます。<br><br>
+      <strong>🟡 責任あるプロジェクトへの任命</strong>は、Bさんの状況によっては有効な場合もありますが、まず対話なしには判断できません。
+    `
+  },
+  {
+    title: "場面③：目標設定の1on1",
+    scene: `<strong>状況：</strong>半期の目標設定面談でCさんが「もっと営業力をつけたいです」と言いました。あなたはコーチとしてこの目標を具体化したいと思っています。`,
+    question: "SMARTゴールに向けて、次にする最適な問いかけはどれですか？",
+    choices: [
+      { text: "「それはいい目標だね。頑張って」とそのまま承認する", type: "bad" },
+      { text: "「営業力がついたと感じるのは、どんな状態のときですか？」と聞く", type: "best" },
+      { text: "「具体的には月の訪問件数を10件にしようか」と提案する", type: "ok" },
+      { text: "「営業の本を読んでみては？」とアドバイスする", type: "bad" }
+    ],
+    feedback: `
+      <strong>✅ ベスト：「どんな状態のとき？」と聞く</strong><br>
+      「営業力をつけたい」は曖昧な目標です。まず本人が思う「達成像」を言語化させることで、SMARTなゴール設定につながります。<br><br>
+      <strong>❌ そのまま承認は NG</strong><br>
+      曖昧なまま終わると、半期後に達成できたかどうか判断できません。<br><br>
+      <strong>🟡 具体的な数値の提案は</strong>、一見良さそうですが「コーチがゴールを決める」ことになってしまいます。まずCさん自身が言語化するステップを踏みましょう。
+    `
+  }
+];
+
+// --- ロールプレイシナリオデータ ---
+const rpScenarios = [
+  {
+    title: "シナリオ①：GROWモデルで目標を引き出す",
+    desc: "部下の田中さんとの1on1。「スキルアップしたい」という漠然とした希望を持っています",
+    role: "田中さん（部下）",
+    steps: [
+      {
+        ai: "最近、なんとなくスキルアップしたいな…と思ってるんですけど、何をすればいいか分からなくて。",
+        prompt: "【Goal フェーズ】田中さんの目標を具体化する問いかけを選んでください",
+        choices: [
+          { text: "「スキルアップといえばやっぱり資格だよ。まずTOEICを受けてみたら？」", score: 0, label: "NG" },
+          { text: "「スキルアップして、どんな状態になりたいですか？」", score: 3, label: "BEST" },
+          { text: "「何かやりたいことあるの？」", score: 1, label: "△" },
+          { text: "「忙しいのに大変だよね。まず今の仕事を片付けようか」", score: 0, label: "NG" }
+        ],
+        ai_good: "うーん、そうですね…1年後には、自分でプロジェクトをリードできるようになりたい、かな。今は先輩についてやってる感じなので。",
+        ai_ng: "……そうですね、確かに資格も必要かも。（会話が止まる）"
+      },
+      {
+        ai: "1年後にはプロジェクトをリードできるようになりたいんです。",
+        prompt: "【Reality フェーズ】現状を確認する問いかけを選んでください",
+        choices: [
+          { text: "「今は何ができて、何がまだできていないと感じていますか？」", score: 3, label: "BEST" },
+          { text: "「プロジェクトリードなんて大変だよ。今の仕事もまだ慣れてないでしょ？」", score: 0, label: "NG" },
+          { text: "「じゃあ次のプロジェクトのリーダーにしてみるね」", score: 1, label: "△" },
+          { text: "「具体的に何時間勉強してるの？」", score: 1, label: "△" }
+        ],
+        ai_good: "進捗管理とかメンバーへの仕事の振り方が、まだ自信なくて。技術的なことは割とできると思うんですけど、マネジメント的なことが課題かなと。",
+        ai_ng: "そうですよね…自分もまだまだ全然で。（自信を失う）"
+      },
+      {
+        ai: "マネジメントスキルが課題だと感じています。",
+        prompt: "【Options フェーズ】選択肢を広げる問いかけを選んでください",
+        choices: [
+          { text: "「マネジメントの本を読んでみては？おすすめがあるよ」", score: 1, label: "△" },
+          { text: "「マネジメントスキルを身につけるために、どんな方法が考えられますか？」", score: 3, label: "BEST" },
+          { text: "「他に何かやりたいことはないの？」", score: 1, label: "△" },
+          { text: "「マネジメントより技術スキルを磨いた方がいいんじゃない？」", score: 0, label: "NG" }
+        ],
+        ai_good: "えーと…社内の勉強会に参加するとか、あとは先輩にシャドウイングさせてもらうとか…本を読んだり、少し小さいプロジェクトをやらせてもらうとかもいいかも。",
+        ai_ng: "そうですか…本ですか、読んでみます。（受け身になる）"
+      },
+      {
+        ai: "いくつかアイデアが出てきました。",
+        prompt: "【Will フェーズ】最初の一歩を決める問いかけを選んでください",
+        choices: [
+          { text: "「じゃあ全部やってみよう！頑張って！」", score: 0, label: "NG" },
+          { text: "「その中で、まず来週から始められることは何ですか？」", score: 3, label: "BEST" },
+          { text: "「全部リストアップしておいてね」", score: 1, label: "△" },
+          { text: "「何が一番楽しそう？」", score: 2, label: "○" }
+        ],
+        ai_good: "来週の先輩のプロジェクトに同行させてもらえないか、声をかけてみます！具体的に動けそうな気がしてきました。",
+        ai_ng: "は、はい…やります（プレッシャーを感じている）"
+      }
+    ]
+  },
+  {
+    title: "シナリオ②：フィードバックを伝える",
+    desc: "佐藤さんの発表後。内容は良かったが、話し方・声量に課題がある",
+    role: "佐藤さん（部下）",
+    steps: [
+      {
+        ai: "さっきの発表、どうでしたか？自分ではあまりうまくいかなかった気がして…",
+        prompt: "まず佐藤さん自身の感想を引き出す問いかけを選んでください",
+        choices: [
+          { text: "「声が小さかったよ。もっとはっきり話して」", score: 0, label: "NG" },
+          { text: "「自分ではどこが良くて、どこが課題だと思いましたか？」", score: 3, label: "BEST" },
+          { text: "「そんなことないよ、よかったよ」", score: 1, label: "△" },
+          { text: "「次はもっと準備してね」", score: 0, label: "NG" }
+        ],
+        ai_good: "内容はまとまってたと思うんですが…声量と、緊張して早口になったのが気になりました。",
+        ai_ng: "そうですか…ありがとうございます（でも何が問題か分からないまま）"
+      },
+      {
+        ai: "声量と早口が課題だと思っています。",
+        prompt: "建設的なフィードバックを伝えてください",
+        choices: [
+          { text: "「内容は本当によくまとまっていました。声量については、最初の2文だけ意識的に大きくすると変わりますよ」", score: 3, label: "BEST" },
+          { text: "「声が小さいのは昔からだよね、直した方がいい」", score: 0, label: "NG" },
+          { text: "「まあ、次はうまくいくよ」", score: 0, label: "NG" },
+          { text: "「発表の練習をもっとするといいね」", score: 1, label: "△" }
+        ],
+        ai_good: "ありがとうございます。最初の2文だけ意識するのは確かにできそうです。次試してみます！",
+        ai_ng: "……はい（落ち込んでいる）"
+      },
+      {
+        ai: "次回に向けて意識したいと思います。",
+        prompt: "次のアクションを引き出す問いかけを選んでください",
+        choices: [
+          { text: "「次の発表では声に注意してね」と指示する", score: 1, label: "△" },
+          { text: "「次の発表に向けて、自分でできる練習は何かありますか？」", score: 3, label: "BEST" },
+          { text: "「プレゼン研修を受けてみたら？」", score: 1, label: "△" },
+          { text: "「まあ場数を踏めば上手くなるよ」", score: 0, label: "NG" }
+        ],
+        ai_good: "鏡の前で練習するのと、録音して自分で聞いてみようと思います。",
+        ai_ng: "はい、頑張ります（具体的な行動が決まらないまま）"
+      }
+    ]
+  }
+];
+
+// =============================================
+// 状態管理
+// =============================================
+const state = {
+  quizIndex: 0,
+  quizScore: 0,
+  quizDone: false,
+  caseIndex: 0,
+  rpScenarioIndex: null,
+  rpStep: 0,
+  rpScore: 0,
+  rpMaxScore: 0,
+  rpDone: false,
+  badges: { quiz: false, case: false, rp: false }
+};
+
+function saveState() {
+  localStorage.setItem('coaching_state', JSON.stringify(state));
+}
+
+function loadState() {
+  const saved = localStorage.getItem('coaching_state');
+  if (saved) {
+    const s = JSON.parse(saved);
+    Object.assign(state, s);
+  }
+}
+
+// =============================================
+// 画面切り替え
+// =============================================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'dictionary') renderDict();
+  if (id === 'quiz') renderQuiz();
+  if (id === 'casestudy') renderCase();
+  if (id === 'roleplay') renderRoleplayMenu();
+  if (id === 'home') updateHomeProgress();
+  window.scrollTo(0, 0);
+}
+
+// =============================================
+// ホーム進捗
+// =============================================
+function updateHomeProgress() {
+  const done = state.quizScore;
+  const pct = Math.round((done / quizData.length) * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-text').innerText = `クイズ ${state.quizDone ? quizData.length : state.quizIndex}/${quizData.length} 完了`;
+  if (state.badges.quiz) document.getElementById('badge-quiz').classList.add('earned');
+  if (state.badges.case) document.getElementById('badge-case').classList.add('earned');
+  if (state.badges.rp) document.getElementById('badge-rp').classList.add('earned');
+}
+
+// =============================================
+// フレームワーク辞典
+// =============================================
+function renderDict() {
+  const container = document.getElementById('dict-container');
+  container.innerHTML = dictData.map((item, i) => `
+    <div class="dict-item" onclick="toggleDict(${i})">
+      <h3>${item.title} <span class="tag">${item.tag}</span></h3>
+      <div class="dict-body" id="dict-${i}">${item.body}</div>
+    </div>
+  `).join('');
+}
+
+function toggleDict(i) {
+  const el = document.getElementById('dict-' + i);
+  el.classList.toggle('open');
+}
+
+// =============================================
+// クイズ
+// =============================================
+function renderQuiz() {
+  const container = document.getElementById('quiz-body');
+  if (state.quizDone) { renderQuizResult(); return; }
+
+  const q = quizData[state.quizIndex];
+  container.innerHTML = `
+    <div class="quiz-header">
+      <div class="q-count">${state.quizIndex + 1} / ${quizData.length}</div>
+    </div>
+    <div class="quiz-card">
+      <div class="question">Q${state.quizIndex + 1}. ${q.q}</div>
+      ${q.choices.map((c, i) => `
+        <button class="choice-btn" id="choice-${i}" onclick="answerQuiz(${i})">${c}</button>
+      `).join('')}
+      <div class="quiz-feedback" id="quiz-feedback"></div>
+      <button class="next-btn" id="quiz-next" onclick="nextQuiz()">次の問題 →</button>
+    </div>
+  `;
+}
+
+function answerQuiz(selected) {
+  const q = quizData[state.quizIndex];
+  document.querySelectorAll('.choice-btn').forEach(b => b.onclick = null);
+  const fb = document.getElementById('quiz-feedback');
+  const nextBtn = document.getElementById('quiz-next');
+
+  if (selected === q.correct) {
+    document.getElementById('choice-' + selected).classList.add('correct');
+    fb.className = 'quiz-feedback correct';
+    fb.innerHTML = '✅ 正解！ ' + q.feedback;
+    state.quizScore++;
+  } else {
+    document.getElementById('choice-' + selected).classList.add('wrong');
+    document.getElementById('choice-' + q.correct).classList.add('correct');
+    fb.className = 'quiz-feedback wrong';
+    fb.innerHTML = '❌ 不正解。 ' + q.feedback;
+  }
+  nextBtn.classList.add('visible');
+  saveState();
+}
+
+function nextQuiz() {
+  state.quizIndex++;
+  if (state.quizIndex >= quizData.length) {
+    state.quizDone = true;
+    if (state.quizScore >= 7) state.badges.quiz = true;
+    saveState();
+    renderQuizResult();
+  } else {
+    saveState();
+    renderQuiz();
+  }
+}
+
+function renderQuizResult() {
+  const container = document.getElementById('quiz-body');
+  const pct = Math.round((state.quizScore / quizData.length) * 100);
+  let msg = pct >= 80 ? '素晴らしい！コーチング理論をよく理解しています 🎉' :
+            pct >= 60 ? 'よく頑張りました！辞典で復習してみましょう 📚' :
+            'まだ伸びしろがあります。辞典でおさらいしてから再チャレンジ！';
+  container.innerHTML = `
+    <div class="quiz-result">
+      <div class="score">${state.quizScore} / ${quizData.length}</div>
+      <p>${msg}</p>
+      ${state.badges.quiz ? '<p style="color:var(--green);font-weight:700;">🏅 クイズマスター バッジ獲得！</p>' : ''}
+      <button class="restart-btn" onclick="restartQuiz()">もう一度チャレンジ</button>
+    </div>
+  `;
+}
+
+function restartQuiz() {
+  state.quizIndex = 0;
+  state.quizScore = 0;
+  state.quizDone = false;
+  saveState();
+  renderQuiz();
+}
+
+// =============================================
+// ケーススタディ
+// =============================================
+function renderCase() {
+  const container = document.getElementById('case-body');
+  const c = caseData[state.caseIndex];
+  container.innerHTML = `
+    <div class="case-nav">${caseData.map((d, i) => `
+      <button class="${i === state.caseIndex ? 'active' : ''}" onclick="switchCase(${i})">${i + 1}</button>
+    `).join('')}</div>
+    <div class="case-card">
+      <h3 style="color:var(--green);margin-bottom:12px;">${c.title}</h3>
+      <div class="case-scene">${c.scene}</div>
+      <div class="case-question">${c.question}</div>
+      ${c.choices.map((ch, i) => `
+        <button class="case-choice" id="case-choice-${i}" onclick="answerCase(${i})">${ch.text}</button>
+      `).join('')}
+      <div class="case-feedback" id="case-feedback"></div>
+      <button class="case-next-btn" id="case-next" onclick="nextCase()">次のシナリオ →</button>
+    </div>
+  `;
+}
+
+function switchCase(i) {
+  state.caseIndex = i;
+  saveState();
+  renderCase();
+}
+
+function answerCase(selected) {
+  const c = caseData[state.caseIndex];
+  document.querySelectorAll('.case-choice').forEach(b => b.onclick = null);
+  const ch = c.choices[selected];
+  const btn = document.getElementById('case-choice-' + selected);
+  btn.classList.add(ch.type === 'best' ? 'best' : ch.type === 'bad' ? 'bad' : 'ok');
+  // show all ratings
+  c.choices.forEach((choice, i) => {
+    if (i !== selected) {
+      const b = document.getElementById('case-choice-' + i);
+      if (choice.type === 'best') b.classList.add('best');
+    }
+  });
+  const fb = document.getElementById('case-feedback');
+  fb.innerHTML = c.feedback;
+  fb.classList.add('open');
+  const nxt = document.getElementById('case-next');
+  if (state.caseIndex < caseData.length - 1) nxt.classList.add('visible');
+  else {
+    nxt.textContent = '✅ 完了！ホームへ';
+    nxt.classList.add('visible');
+    nxt.onclick = () => { state.badges.case = true; saveState(); showScreen('home'); };
+  }
+  saveState();
+}
+
+function nextCase() {
+  state.caseIndex = Math.min(state.caseIndex + 1, caseData.length - 1);
+  saveState();
+  renderCase();
+}
+
+// =============================================
+// ロールプレイ
+// =============================================
+function renderRoleplayMenu() {
+  const container = document.getElementById('rp-body');
+  container.innerHTML = `
+    <div class="rp-intro">
+      <h3>🎭 ロールプレイ練習</h3>
+      <p>AIが部下・クライアント役になります。選択肢からコーチングとして適切な応答を選んでください。各選択肢に評価とフィードバックが付きます。</p>
+    </div>
+    <div class="scenario-list">
+      ${rpScenarios.map((s, i) => `
+        <button class="scenario-btn" onclick="startRoleplay(${i})">
+          <h4>${s.title}</h4>
+          <p>${s.desc}</p>
+        </button>
+      `).join('')}
+    </div>
+  `;
+}
+
+function startRoleplay(index) {
+  state.rpScenarioIndex = index;
+  state.rpStep = 0;
+  state.rpScore = 0;
+  state.rpDone = false;
+  // calc max score
+  const sc = rpScenarios[index];
+  state.rpMaxScore = sc.steps.reduce((sum, step) => {
+    return sum + Math.max(...step.choices.map(c => c.score));
+  }, 0);
+  saveState();
+  renderRoleplayStep();
+}
+
+function renderRoleplayStep() {
+  const container = document.getElementById('rp-body');
+  const sc = rpScenarios[state.rpScenarioIndex];
+  const step = sc.steps[state.rpStep];
+
+  const msgs = [];
+  msgs.push(`<div class="msg system">📋 ${sc.title}<br>あなたはコーチ役です。相手は${sc.role}。</div>`);
+  msgs.push(`<div class="msg ai">${step.ai}</div>`);
+
+  container.innerHTML = `
+    <div class="rp-chat">
+      <div class="rp-chat-header">💬 ${sc.role} との会話</div>
+      <div class="rp-messages" id="rp-messages">${msgs.join('')}</div>
+      <div class="rp-choices">
+        <p>あなたの応答を選んでください：</p>
+        ${step.choices.map((c, i) => `
+          <button class="rp-choice-btn" id="rp-choice-${i}" onclick="selectRpChoice(${i})">${c.text}</button>
+        `).join('')}
+        <div id="rp-inline-feedback" style="display:none;margin-top:10px;padding:12px;background:var(--green-light);border-radius:10px;font-size:0.88rem;line-height:1.65;"></div>
+        <button class="next-btn" id="rp-next-btn" onclick="nextRpStep()" style="display:none;margin-top:8px;">次へ →</button>
+      </div>
+    </div>
+  `;
+}
+
+function selectRpChoice(i) {
+  const sc = rpScenarios[state.rpScenarioIndex];
+  const step = sc.steps[state.rpStep];
+  const choice = step.choices[i];
+  document.querySelectorAll('.rp-choice-btn').forEach(b => b.onclick = null);
+
+  const isGood = choice.score >= 2;
+  document.getElementById('rp-choice-' + i).classList.add(isGood ? 'selected-good' : 'selected-bad');
+
+  // show AI response
+  const msgs = document.getElementById('rp-messages');
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg user';
+  userMsg.textContent = choice.text;
+  msgs.appendChild(userMsg);
+
+  const aiReply = document.createElement('div');
+  aiReply.className = 'msg ai';
+  aiReply.textContent = isGood ? step.ai_good : step.ai_ng;
+  msgs.appendChild(aiReply);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  // score
+  state.rpScore += choice.score;
+
+  // inline feedback
+  const fb = document.getElementById('rp-inline-feedback');
+  const labels = { 3: '✅ BEST', 2: '○ 良い', 1: '△ まあまあ', 0: '❌ NG' };
+  const colors = { 3: '#155724', 2: '#0c5460', 1: '#856404', 0: '#7b2d21' };
+  fb.style.display = 'block';
+  fb.style.color = colors[choice.score] || '#333';
+  fb.innerHTML = `<strong>${labels[choice.score] || ''}</strong><br>` +
+    (isGood ? `相手が自分で考える余地を作る良い問いかけです。` : `少しアドバイス寄りになっています。コーチングでは相手に問いかけを。`) +
+    `<br><strong>全選択肢の評価：</strong>` +
+    step.choices.map(c => `<br>・${c.text} → <strong>${labels[c.score]}</strong>`).join('');
+
+  saveState();
+  const nextBtn = document.getElementById('rp-next-btn');
+  nextBtn.style.display = 'inline-block';
+}
+
+function nextRpStep() {
+  const sc = rpScenarios[state.rpScenarioIndex];
+  state.rpStep++;
+  if (state.rpStep >= sc.steps.length) {
+    renderRoleplayResult();
+  } else {
+    saveState();
+    renderRoleplayStep();
+  }
+}
+
+function renderRoleplayResult() {
+  const container = document.getElementById('rp-body');
+  const pct = state.rpMaxScore > 0 ? Math.round((state.rpScore / state.rpMaxScore) * 100) : 0;
+  state.rpDone = true;
+  if (pct >= 60) state.badges.rp = true;
+  saveState();
+
+  let advice = pct >= 80
+    ? 'コーチング的な問いかけが自然にできています。相手の思考を引き出す会話の流れをしっかり作れていました！'
+    : pct >= 50
+    ? '概ねよい選択ができています。「答えを与えず問いかける」ことをより意識するとさらに上達します。'
+    : 'まだアドバイス・指示になりやすい傾向があります。「どう思う？」「どうすればいいと思う？」という問いかけを意識しましょう。';
+
+  container.innerHTML = `
+    <div class="rp-result">
+      <div class="rp-score">${pct}点</div>
+      <p>スコア：${state.rpScore} / ${state.rpMaxScore}</p>
+      <div class="advice">💡 ${advice}</div>
+      ${state.badges.rp ? '<p style="color:var(--green);font-weight:700;margin-top:12px;">🏅 ロールプレイヤー バッジ獲得！</p>' : ''}
+      <button class="restart-btn" onclick="renderRoleplayMenu()">シナリオ選択に戻る</button>
+    </div>
+  `;
+}
+
+// =============================================
+// 初期化
+// =============================================
+loadState();
+updateHomeProgress();
+</script>
+</body>
+</html>
